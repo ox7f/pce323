@@ -40,13 +40,13 @@ Batterieuhr und kennt die Zeit nach einem Neustart erst wieder, wenn er per Inte
 
 ## 2. Code auf den Pi holen
 
-Der Code liegt in GitHub (`REPO_URL`). Der Pi holt ihn per `git clone`, und danach holt er sich neue Versionen selbst
+Der Code liegt in GitHub (`github.com/ox7f/pce323`). Der Pi holt ihn per `git clone`, und danach holt er sich neue Versionen selbst
 (siehe „Update der Programme“). Die Messdaten (`data/`) sind nicht im Repository und bleiben auf dem Pi.
 
 **Öffentliches Repository:**
 
 ```
-git clone https://github.com/OWNER/REPO.git ~/pce323
+git clone https://github.com/ox7f/pce323.git ~/pce323
 ```
 
 **Privates Repository:** Der Pi braucht einen eigenen Schlüssel, der nur lesen darf (Deploy Key):
@@ -57,12 +57,12 @@ cat ~/.ssh/pce323_deploy.pub     # Ausgabe kopieren
 ```
 
 Auf GitHub im Repository: *Settings → Deploy keys → Add deploy key*, Schlüssel einfügen, **Allow write access aus lassen**.
-(Oder auf dem PC: `gh repo deploy-key add pce323_deploy.pub -R OWNER/REPO`.) Dann auf dem Pi:
+(Oder auf dem PC: `gh repo deploy-key add pce323_deploy.pub -R ox7f/pce323`.) Dann auf dem Pi:
 
 ```
 printf 'Host github.com\n  IdentityFile ~/.ssh/pce323_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
 chmod 600 ~/.ssh/config
-git clone git@github.com:OWNER/REPO.git ~/pce323
+git clone git@github.com:ox7f/pce323.git ~/pce323
 ```
 
 **Pi hat die Dateien schon (früher per rsync kopiert):** im vorhandenen Ordner zu einem Klon machen, `data/` bleibt unberührt:
@@ -70,7 +70,7 @@ git clone git@github.com:OWNER/REPO.git ~/pce323
 ```
 cd ~/pce323
 git init -b main
-git remote add origin git@github.com:OWNER/REPO.git     # bzw. die https-Adresse
+git remote add origin git@github.com:ox7f/pce323.git     # bzw. die https-Adresse
 git fetch origin
 git reset --hard origin/main
 git branch --set-upstream-to=origin/main main
