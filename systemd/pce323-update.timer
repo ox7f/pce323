@@ -1,0 +1,10 @@
+[Unit]
+Description=PCE-323 regelmaessig auf neue Version pruefen
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

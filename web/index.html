@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schallpegel PCE-323</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series: #2a78d6;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #d03b3b;
+    --wash: rgba(11,11,11,0.05);
+    --brush: rgba(42,120,214,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series: #3987e5;
+      --wash: rgba(255,255,255,0.07);
+      --brush: rgba(57,135,229,0.22);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series: #3987e5;
+    --wash: rgba(255,255,255,0.07);
+      --brush: rgba(57,135,229,0.22);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+  .status svg { flex: none; }
+  .statusbox { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; font: inherit; font-size: 13px; cursor: pointer; min-height: 32px;
+    padding: 4px 12px; border-radius: 8px; color: var(--ink-2); background: transparent; border: 1px solid var(--border);
+  }
+  .btn:hover { background: var(--wash); }
+  .btn.attn { color: var(--ink); border-color: var(--ink-2); font-weight: 600; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
+  .btn[hidden] { display: none; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+  .hero .value { font-size: 64px; line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; }
+  .hero .unit { font-size: 22px; color: var(--ink-2); font-weight: 500; }
+  .hero-meta { color: var(--ink-2); font-size: 14px; margin-top: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .tile .label { color: var(--ink-2); font-size: 13px; }
+  .tile .num { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin-top: 2px; }
+  .tile .num small { font-size: 14px; color: var(--ink-2); font-weight: 500; margin-left: 3px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-top: 20px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; padding: 2px; background: var(--surface); }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer; min-height: 32px;
+  }
+  .seg button:hover { background: var(--wash); }
+  .seg button[aria-pressed="true"] { background: var(--wash); color: var(--ink); font-weight: 600; }
+  .seg button:focus-visible, #chart:focus-visible, a:focus-visible, .marks input:focus-visible,
+  .daynav button:focus-visible, .daynav input:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
+
+  .daynav {
+    display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  }
+  .daynav button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2); cursor: pointer;
+    font: inherit; font-size: 17px; line-height: 1; min-width: 32px; min-height: 32px; border-radius: 8px;
+  }
+  .daynav button:hover:not(:disabled) { background: var(--wash); }
+  .daynav button:disabled { opacity: .35; cursor: default; }
+  .daynav input {
+    font: inherit; font-size: 14px; color: var(--ink-2); background: transparent;
+    border: 0; border-radius: 8px; padding: 4px 6px; min-height: 32px;
+  }
+  .daynav.on input { background: var(--wash); color: var(--ink); font-weight: 600; }
+  .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+  .head-right { display: inline-flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+  .chart-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .chart-head .sub { color: var(--ink-2); font-size: 13px; }
+  #plot { position: relative; margin-top: 8px; transition: opacity .15s; }
+  #plot.loading { opacity: .55; }
+  #chart { display: block; width: 100%; height: 300px; touch-action: pan-y; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+  .brush {
+    position: absolute; pointer-events: none; background: var(--brush);
+    border-left: 1px solid var(--series); border-right: 1px solid var(--series);
+  }
+  .brush[hidden] { display: none; }
+  #chart text { fill: var(--muted); font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #chart text.end { fill: var(--ink); font-weight: 600; font-size: 13px; }
+  #chart .empty { fill: var(--ink-2); font-size: 14px; }
+  .tip {
+    position: absolute; pointer-events: none; z-index: 2; min-width: 150px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.14); padding: 8px 10px; font-size: 13px;
+  }
+  .tip[hidden] { display: none; }
+  .tip .when { color: var(--ink-2); }
+  .tip .row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .tip .key { width: 14px; height: 0; border-top: 2px solid var(--series); border-radius: 1px; flex: none; }
+  .tip .key.band { height: 8px; border: 0; background: var(--series); opacity: .25; border-radius: 2px; }
+  .tip .v { font-weight: 600; font-size: 15px; }
+  .tip .l { color: var(--ink-2); }
+  .tip .v.hot, td.hot { color: var(--critical); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--ink-2); font-size: 13px; margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--series); }
+  .legend i.band { height: 8px; border: 0; background: var(--series); opacity: .25; border-radius: 2px; }
+  .legend i.thr { border-top: 2px dashed var(--critical); }
+  .legend .hint { margin-left: auto; }
+  .tri {
+    display: inline-block; width: 0; height: 0; vertical-align: middle;
+    border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid var(--critical);
+  }
+  .marks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+  .marks label { display: inline-flex; align-items: center; gap: 6px; }
+  .marks input {
+    width: 4.5em; min-height: 32px; padding: 4px 6px; font: inherit; font-size: 14px; color: var(--ink);
+    background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+  }
+  #peaks { color: var(--ink); }
+
+  .tablewrap { max-height: 360px; overflow: auto; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; }
+  td { font-variant-numeric: tabular-nums; }
+
+  .files h2 { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+  .files ul { list-style: none; margin: 0; padding: 0; }
+  .files li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+  .files li:last-child { border-bottom: 0; }
+  .files a { color: var(--series); text-decoration: none; }
+  .files a:hover { text-decoration: underline; }
+  .files .size { color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+  .files li { align-items: center; }
+  .files .right { display: inline-flex; align-items: center; gap: 12px; }
+  .note { color: var(--ink-2); font-size: 13px; margin-top: 24px; }
+
+  @media (max-width: 560px) {
+    .hero .value { font-size: 56px; }
+    .tile .num { font-size: 22px; }
+    .tiles { gap: 8px; }
+    #chart { height: 260px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Schallpegel PCE-323</h1>
+    <div class="statusbox">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <button class="btn" id="restart" type="button" hidden>Logger neu starten</button>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="hero-label">
+    <div class="hero">
+      <span class="value" id="hero" aria-labelledby="hero-label">–</span>
+      <span class="unit" id="hero-unit">dB</span>
+    </div>
+    <div class="hero-meta" id="hero-label">Aktueller Pegel (Leq über das Messintervall)</div>
+    <div class="hero-meta" id="hero-meta"></div>
+  </section>
+
+  <section class="tiles" aria-label="Kennwerte seit Mitternacht">
+    <div class="tile"><div class="label">Heute Leq</div><div class="num" id="t-leq">–</div></div>
+    <div class="tile"><div class="label">Heute Maximum</div><div class="num" id="t-max">–</div></div>
+    <div class="tile"><div class="label">Heute Minimum</div><div class="num" id="t-min">–</div></div>
+  </section>
+
+  <div class="filters">
+    <div class="seg" id="ranges" role="group" aria-label="Zeitraum">
+      <button data-min="10" aria-pressed="false">10 Min</button>
+      <button data-min="60" aria-pressed="true">1 Std</button>
+      <button data-min="360" aria-pressed="false">6 Std</button>
+      <button data-min="1440" aria-pressed="false">24 Std</button>
+    </div>
+    <div class="daynav" id="daynav" role="group" aria-label="Vergangenen Tag anzeigen">
+      <button type="button" data-step="-7" aria-label="Eine Woche zurück" title="Eine Woche zurück">«</button>
+      <button type="button" data-step="-1" aria-label="Einen Tag zurück" title="Einen Tag zurück">‹</button>
+      <input type="date" id="day" aria-label="Tag auswählen" title="Tag auswählen">
+      <button type="button" data-step="1" aria-label="Einen Tag vor" title="Einen Tag vor">›</button>
+      <button type="button" data-step="7" aria-label="Eine Woche vor" title="Eine Woche vor">»</button>
+    </div>
+    <div class="seg" id="views" role="group" aria-label="Ansicht">
+      <button data-view="chart" aria-pressed="true">Diagramm</button>
+      <button data-view="table" aria-pressed="false">Tabelle</button>
+    </div>
+  </div>
+
+  <section class="card" aria-labelledby="chart-title">
+    <div class="chart-head">
+      <h2 id="chart-title">Pegelverlauf</h2>
+      <div class="head-right">
+        <span class="sub" id="chart-sub"></span>
+        <button class="btn" id="zoomreset" type="button" hidden>Zoom zurücksetzen</button>
+      </div>
+    </div>
+    <div id="chartview">
+      <div id="plot">
+        <svg id="chart" tabindex="0" role="img" aria-label="Liniendiagramm des Schallpegels. Pfeiltasten: Werte, Plus und Minus: zoomen, 0: zurücksetzen. Details in der Tabellenansicht"></svg>
+        <div class="brush" id="brush" hidden></div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="legend">
+        <span><i></i>Leq (Mittel pro Zeitabschnitt)</span>
+        <span><i class="band"></i>Minimum bis Maximum</span>
+        <span><i class="thr"></i><b class="tri"></b>über der Schwelle (rot)</span>
+        <span class="hint" id="zoomhint"></span>
+      </div>
+    </div>
+    <div id="tableview" hidden>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Zeit</th><th>Leq dB</th><th>Min dB</th><th>Max dB</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="marks">
+      <label>Ausschläge markieren ab <input id="thr" type="number" inputmode="decimal" min="20" max="140" step="1" placeholder="aus"> dB</label>
+      <span id="peaks"></span>
+    </div>
+  </section>
+
+  <section class="card files" aria-labelledby="files-title">
+    <h2 id="files-title">CSV-Dateien</h2>
+    <ul id="files"></ul>
+  </section>
+
+  <p class="note">Ohne Anmeldung, nur im vertrauenswürdigen Heimnetz erreichbar machen.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var NS = "http://www.w3.org/2000/svg";
+  var $ = function (id) { return document.getElementById(id); };
+  var nf1 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var fmt = function (v) { return (v === null || v === undefined || isNaN(v)) ? "–" : nf1.format(v); };
+  var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+  var hms = function (t) { var d = new Date(t * 1000); return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); };
+  var hm = function (t) { var d = new Date(t * 1000); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  var dm = function (t) { var d = new Date(t * 1000); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "."; };
+  var isoDay = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+  var parseDay = function (s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); };
+  var addDays = function (s, n) { var d = parseDay(s); d.setDate(d.getDate() + n); return isoDay(d); };
+  var todayIso = function () { return isoDay(new Date()); };
+  var dayFmt = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+  var longDate = function (s) { return dayFmt.format(parseDay(s)); };
+
+  var nfT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+
+  // zoom: null | { live: true, span } (laeuft mit) | { from, to } (fest); gesture: Fenster waehrend Zwei-Finger/Mausrad
+  // day: null = live (letzte X Minuten) | "JJJJ-MM-TT" = ganzer Kalendertag
+  var state = { minutes: 60, view: "chart", hist: null, hover: -1, geom: null, zoom: null, gesture: null, thr: 60, day: null };
+  var dayMin = null;                        // aeltester Tag mit CSV-Datei
+  try {
+    var saved = JSON.parse(localStorage.getItem("pce323") || "{}");
+    if (saved.minutes) state.minutes = saved.minutes;
+    if (saved.view) state.view = saved.view;
+    if (saved.thr === null || typeof saved.thr === "number") state.thr = saved.thr;
+  } catch (e) {}
+
+  /* ---------- Status ---------- */
+  var ICONS = {
+    good: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--good)"/><path d="M4.6 8.2l2.3 2.3 4.5-4.8" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warning: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l7 12.5H1z" fill="var(--warning)" stroke="var(--warning)" stroke-width="1" stroke-linejoin="round"/><path d="M8 6v3.6M8 11.4v.2" stroke="#0b0b0b" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    critical: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--critical)"/><path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>'
+  };
+  function setStatus(kind, text) {
+    var el = $("status");
+    el.innerHTML = ICONS[kind];                // feste Icons, kein Fremdtext
+    var s = document.createElement("span"); s.textContent = text; el.appendChild(s);
+  }
+
+  function renderLatest(st) {
+    var age = st.updated ? st.now - st.updated : null;
+    var iv = st.interval || 1;
+    var fresh = age !== null && age <= Math.max(5, 3 * iv);
+    if (st.state === "disconnected") setStatus("critical", "USB-Verbindung getrennt – versuche neu zu verbinden");
+    else if (st.state === "stalled") setStatus("warning", "Keine Messwerte – Gerät an und Auto-Power-off aus?");
+    else if (st.state === "stopped") setStatus("warning", "Logger wird neu gestartet …");
+    else if (st.state === "starting") setStatus("warning", "Logger startet …");
+    else if (st.state === "waiting_time") setStatus("warning", "Warte auf Uhrzeit aus dem Internet, danach startet der Logger …");
+    else if (st.state === "ok" && fresh) setStatus("good", "Live");
+    else if (st.state === "ok") setStatus("warning", "Letzter Wert vor " + Math.round(age) + " s – Logger läuft?");
+    else setStatus("critical", "Kein Status vom Logger – Dienst gestartet?");
+
+    // Neustart-Knopf nur, wenn der Logger von systemd ueberwacht wird; betont, wenn etwas nicht stimmt
+    var rb = $("restart");
+    rb.hidden = !st.supervised;
+    rb.classList.toggle("attn", !(st.state === "ok" && fresh));
+
+    var ok = st.state === "ok" && st.leq !== undefined;
+    $("hero").textContent = ok ? fmt(st.leq) : "–";
+    $("hero").style.opacity = (ok && fresh) ? 1 : 0.45;
+    $("hero-unit").textContent = ok ? "dB(" + (st.weighting || "?") + ")" : "dB";
+    var meta = [];
+    if (ok) {
+      meta.push("Zeitbewertung " + (st.speed || "?"));
+      meta.push("Bereich " + (st.range || "?"));
+      if (st.mode && st.mode !== "live") meta.push(st.mode);
+      meta.push("Min " + fmt(st.min) + " / Max " + fmt(st.max));
+    }
+    $("hero-meta").textContent = meta.join(" · ");
+
+    var t = st.today;
+    $("t-leq").innerHTML = ""; $("t-max").innerHTML = ""; $("t-min").innerHTML = "";
+    [["t-leq", t && t.leq], ["t-max", t && t.max], ["t-min", t && t.min]].forEach(function (p) {
+      var el = $(p[0]); el.textContent = fmt(p[1]);
+      var u = document.createElement("small"); u.textContent = "dB"; el.appendChild(u);
+    });
+  }
+
+  /* ---------- Daten laden ---------- */
+  function getJSON(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  var latestTimer = null, histTimer = null, filesTimer = null, histSeq = 0;
+  function pollLatest() {
+    getJSON("/api/latest").then(renderLatest).catch(function () { setStatus("critical", "Webserver nicht erreichbar"); });
+  }
+  function histQuery() {
+    var pts = Math.min(1000, Math.round(Math.max(300, $("chart").clientWidth) / 1.5));
+    var z = state.zoom;
+    if (!state.day && (!z || z.live)) return "minutes=" + (z ? (z.span / 60).toFixed(3) : state.minutes) + "&points=" + pts;
+    var w = z || dayWin();
+    var to = state.day ? Math.min(w.to, dayWin().to - 0.5) : w.to;   // nicht in die Datei vom Folgetag greifen
+    return "from=" + w.from.toFixed(1) + "&to=" + to.toFixed(1) + "&points=" + pts;
+  }
+  function loadHistory() {
+    var my = ++histSeq, plot = $("plot"); plot.classList.add("loading");
+    return getJSON("/api/history?" + histQuery())
+      .then(function (h) { if (my === histSeq) { state.hist = h; render(); } })   // veraltete Antworten verwerfen
+      .catch(function () {})
+      .then(function () { if (my === histSeq) plot.classList.remove("loading"); });
+  }
+  function loadFiles() {
+    getJSON("/api/files").then(function (list) {
+      var ul = $("files"); ul.innerHTML = "";
+      if (!list.length) { var li = document.createElement("li"); li.textContent = "Noch keine Dateien."; ul.appendChild(li); return; }
+      var days = [];
+      list.forEach(function (f) {
+        var li = document.createElement("li");
+        var a = document.createElement("a"); a.href = "/files/" + encodeURIComponent(f.name); a.textContent = f.name;
+        var right = document.createElement("span"); right.className = "right";
+        var m = /(\d{4}-\d{2}-\d{2})\.csv$/.exec(f.name);
+        if (m) {                                 // Tagesdatei: direkt im Diagramm oeffnen
+          days.push(m[1]);
+          var b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Anzeigen";
+          b.setAttribute("aria-label", longDate(m[1]) + " im Diagramm anzeigen");
+          b.addEventListener("click", function () {
+            setDay(m[1]);
+            document.querySelector(".filters").scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+          right.appendChild(b);
+        }
+        var s = document.createElement("span"); s.className = "size";
+        s.textContent = (f.bytes / 1048576 >= 1 ? nf1.format(f.bytes / 1048576) + " MB" : Math.max(1, Math.round(f.bytes / 1024)) + " KB");
+        right.appendChild(s);
+        li.appendChild(a); li.appendChild(right); ul.appendChild(li);
+      });
+      dayMin = days.length ? days.sort()[0] : null;
+      syncButtons();
+    }).catch(function () {});
+  }
+  function startPolling() {
+    stopPolling();
+    pollLatest(); loadHistory(); loadFiles();
+    latestTimer = setInterval(pollLatest, 1000);
+    // nur nachladen, wenn der Ausschnitt bis jetzt reicht: Vergangenes aendert sich nicht mehr
+    histTimer = setInterval(function () {
+      if (state.followToday && state.day !== todayIso() && !state.zoom) { setDay(todayIso()); return; }
+      if (curWin().to >= serverNow() - 60) loadHistory();
+    }, 10000);
+    filesTimer = setInterval(loadFiles, 60000);
+  }
+  function stopPolling() { clearInterval(latestTimer); clearInterval(histTimer); clearInterval(filesTimer); }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) stopPolling(); else startPolling();
+  });
+
+  /* ---------- Diagramm ---------- */
+  var MIN_SPAN = 60;                         // kleinster Zoom-Ausschnitt in Sekunden
+  function el(name, attrs) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function niceStep(span, maxTicks) {
+    var steps = [1, 2, 5, 10, 20, 25, 50];
+    for (var i = 0; i < steps.length; i++) if (span / steps[i] <= maxTicks) return steps[i];
+    return 50;
+  }
+  function timeStep(spanSec, maxTicks) {
+    var steps = [10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400];
+    for (var i = 0; i < steps.length; i++) if (spanSec / steps[i] <= maxTicks) return steps[i];
+    return 86400;
+  }
+  function lowerBound(s, t) {                // erster Index mit Zeit >= t
+    var lo = 0, hi = s.length;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (s[mid][0] < t) lo = mid + 1; else hi = mid; }
+    return lo;
+  }
+  function dur(sec) {
+    sec = Math.round(sec);
+    if (sec < 120) return sec + " s";
+    var mnt = Math.round(sec / 60);
+    if (mnt < 60) return mnt + " Min";
+    return Math.floor(mnt / 60) + " Std" + (mnt % 60 ? " " + (mnt % 60) + " Min" : "");
+  }
+  function clock(t, w) {                     // Uhrzeit passend zur Ausschnittslaenge, Datum nur ueber Mitternacht
+    return (dm(w.from) !== dm(w.to - 1) ? dm(t) + " " : "") + (w.to - w.from <= 1800 ? hms(t) : hm(t));   // bis 24:00 = gleicher Tag
+  }
+
+  /* Zeitfenster aus Zeitraum-Knopf, Zoom und laufender Geste. Alle Zeiten sind Server-Zeit. */
+  function serverNow() { var h = state.hist; return h ? (h.now || h.to) : Date.now() / 1000; }
+  function dayWin() {                        // ganzer Kalendertag (bei Zeitumstellung 23 oder 25 Std)
+    var d = parseDay(state.day), e = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+    return { from: d.getTime() / 1000, to: e.getTime() / 1000 };
+  }
+  function outerWin() {
+    if (state.day) return dayWin();
+    var now = serverNow(); return { from: now - state.minutes * 60, to: now };
+  }
+  function curWin() {
+    if (state.gesture) return state.gesture;
+    var z = state.zoom;
+    if (!z) return outerWin();
+    if (z.live) { var now = serverNow(); return { from: now - z.span, to: now }; }
+    return { from: z.from, to: z.to };
+  }
+  function clampWin(from, to) {              // innerhalb des gewaehlten Zeitraums halten
+    var o = outerWin(), full = o.to - o.from, span = to - from;
+    if (!(span > 0)) span = MIN_SPAN;
+    var s2 = Math.min(full, Math.max(Math.min(MIN_SPAN, full), span));
+    if (s2 !== span) { from += (span - s2) / 2; span = s2; }
+    from = Math.max(o.from, Math.min(from, o.to - span));
+    return { from: from, to: from + span };
+  }
+  function setZoom(w) {
+    clearTimeout(wheelTimer); state.gesture = null;
+    var o = outerWin(), span = w.to - w.from, b = state.hist ? state.hist.bucket : 1;
+    if (span >= (o.to - o.from) * 0.98) state.zoom = null;
+    else if (!state.day && o.to - w.to <= Math.max(span * 0.02, b * 2, 5)) state.zoom = { live: true, span: span };  // reicht bis jetzt: laeuft mit
+    else state.zoom = { from: w.from, to: w.to };
+    hideHover(); render(); loadHistory();
+  }
+  function resetZoom() { if (state.zoom || state.gesture) setZoom(outerWin()); }
+  function zoomBy(f, t) {
+    var w = curWin(); if (t === undefined) t = (w.from + w.to) / 2;
+    setZoom(clampWin(t - (t - w.from) * f, t + (w.to - t) * f));
+  }
+
+  /* Ausschlaege: Zeitabschnitte mit Max >= Schwelle, nahe beieinander liegende zusammengefasst */
+  function findPeaks(win) {
+    var h = state.hist, thr = state.thr, out = [], cur = null;
+    if (!h || !h.series || thr === null) return out;
+    var s = h.series, merge = Math.max(h.bucket * 2, (win.to - win.from) / 100);
+    for (var i = lowerBound(s, win.from - h.bucket / 2); i < s.length && s[i][0] <= win.to + h.bucket / 2; i++) {
+      var p = s[i];
+      if (p[3] < thr) continue;
+      if (cur && p[0] - cur.end <= merge) { cur.end = p[0]; if (p[3] > cur.v) { cur.v = p[3]; cur.t = p[0]; } }
+      else { cur = { t: p[0], v: p[3], end: p[0] }; out.push(cur); }
+    }
+    return out;
+  }
+  function showPeaks(ev, win) {
+    var out = $("peaks"), thr = state.thr;
+    out.innerHTML = "";
+    if (thr === null) { out.textContent = "Markierung aus"; return; }
+    var where = state.zoom ? " im Ausschnitt" : state.day ? (state.day === todayIso() ? " heute" : " an diesem Tag") : " im Zeitraum";
+    if (!ev.length) { out.textContent = "Keine Ausschläge über " + nfT.format(thr) + " dB" + where; return; }
+    var top = ev[0];
+    ev.forEach(function (e) { if (e.v > top.v) top = e; });
+    var tri = document.createElement("b"); tri.className = "tri"; tri.setAttribute("aria-hidden", "true");
+    out.appendChild(tri);
+    out.appendChild(document.createTextNode(" " + ev.length + (ev.length === 1 ? " Ausschlag" : " Ausschläge") +
+      " über " + nfT.format(thr) + " dB" + where + ", höchster " + fmt(top.v) + " dB um " + clock(top.t, win)));
+  }
+
+  function drawChart() {
+    var svg = $("chart"), h = state.hist;
+    var W = svg.clientWidth || 600, H = svg.clientHeight || 300;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var m = { l: 40, r: 50, t: 18, b: 26 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var s = h && h.series ? h.series : [];
+    var win = curWin(), span = win.to - win.from, bk = h ? h.bucket : 1;
+    var X = function (t) { return m.l + (t - win.from) / span * pw; };
+    // gezeichnet wird ein Zeitabschnitt ueber den Rand hinaus (abgeschnitten), bedienbar nur der Ausschnitt
+    var i0 = lowerBound(s, win.from - bk), i1 = lowerBound(s, win.to + bk) - 1;
+    var k0 = lowerBound(s, win.from - bk / 2), k1 = lowerBound(s, win.to + bk / 2) - 1;
+    state.geom = { X: X, Y: null, m: m, pw: pw, ph: ph, W: W, H: H, win: win, k0: k0, k1: k1 };
+    var ev = findPeaks(win);
+    showPeaks(ev, win);
+
+    if (k1 < k0) {
+      var t = el("text", { x: W / 2, y: H / 2, "text-anchor": "middle", "class": "empty" });
+      t.textContent = state.zoom ? "Keine Daten in diesem Ausschnitt" : state.day ? "Keine Daten für diesen Tag" : "Noch keine Daten für diesen Zeitraum";
+      svg.appendChild(t);
+      if (state.hover >= 0) hideHover();
+      return;
+    }
+
+    var lo = Infinity, hi = -Infinity, i;
+    for (i = i0; i <= i1; i++) { lo = Math.min(lo, s[i][2]); hi = Math.max(hi, s[i][3]); }
+    if (hi - lo < 10) { var mid = (hi + lo) / 2; lo = mid - 5; hi = mid + 5; }
+    var step = niceStep(hi - lo + 2, 6);
+    var y0 = Math.floor((lo - 1) / step) * step, y1 = Math.ceil((hi + 1) / step) * step;
+    var Y = function (v) { return m.t + (1 - (v - y0) / (y1 - y0)) * ph; };
+    state.geom.Y = Y;
+
+    // Raster + Y-Achse
+    for (var v = y0; v <= y1 + 0.001; v += step) {
+      svg.appendChild(el("line", { x1: m.l, x2: m.l + pw, y1: Y(v), y2: Y(v), stroke: "var(--grid)", "stroke-width": 1 }));
+      var yt = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }); yt.textContent = String(v); svg.appendChild(yt);
+    }
+    // X-Achse
+    svg.appendChild(el("line", { x1: m.l, x2: m.l + pw, y1: m.t + ph, y2: m.t + ph, stroke: "var(--axis)", "stroke-width": 1 }));
+    var tstep = timeStep(span, Math.max(3, Math.floor(pw / 80)));
+    var tzo = new Date(win.from * 1000).getTimezoneOffset() * 60;
+    var first = Math.ceil((win.from - tzo) / tstep) * tstep + tzo;
+    for (var tt = first; tt <= win.to; tt += tstep) {
+      var x = X(tt);
+      svg.appendChild(el("line", { x1: x, x2: x, y1: m.t + ph, y2: m.t + ph + 4, stroke: "var(--axis)", "stroke-width": 1 }));
+      var d = new Date(tt * 1000);
+      var lab = tstep < 60 ? hms(tt) : (d.getHours() === 0 && d.getMinutes() === 0 && span > 3 * 3600) ? dm(tt) : hm(tt);
+      var xt = el("text", { x: x, y: m.t + ph + 18, "text-anchor": "middle" }); xt.textContent = lab; svg.appendChild(xt);
+    }
+
+    // Segmente trennen, wo Daten fehlen (Luecke > 3 Zeitabschnitte)
+    var gap = Math.max(bk * 3, 5), segs = [], cur = [];
+    for (i = i0; i <= i1; i++) {
+      if (cur.length && s[i][0] - s[i - 1][0] > gap) { segs.push(cur); cur = []; }
+      cur.push(s[i]);
+    }
+    if (cur.length) segs.push(cur);
+
+    var bandD = "", lineD = "";
+    segs.forEach(function (sg) {
+      if (sg.length === 1) {                                    // Einzelpunkt als kurze Linie
+        var p = sg[0], hw = Math.max(1.5, pw * bk / span / 2);
+        bandD += "M" + (X(p[0]) - hw) + " " + Y(p[3]) + "H" + (X(p[0]) + hw) + "V" + Y(p[2]) + "H" + (X(p[0]) - hw) + "Z";
+        lineD += "M" + (X(p[0]) - hw) + " " + Y(p[1]) + "H" + (X(p[0]) + hw);
+        return;
+      }
+      var top = sg.map(function (p) { return X(p[0]).toFixed(1) + " " + Y(p[3]).toFixed(1); });
+      var bot = sg.map(function (p) { return X(p[0]).toFixed(1) + " " + Y(p[2]).toFixed(1); }).reverse();
+      bandD += "M" + top.join("L") + "L" + bot.join("L") + "Z";
+      lineD += "M" + sg.map(function (p) { return X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("L");
+    });
+
+    // Unterhalb der Schwelle blau, darueber rot (gleiche Pfade, zwei Ausschnitte)
+    var thr = state.thr, hot = thr !== null && thr < y1;
+    var yT = hot ? Math.max(m.t, Math.min(m.t + ph, Y(thr))) : 0;
+    var defs = el("defs", {});
+    [["clip-cool", yT, m.t + ph + 2 - yT], ["clip-hot", 0, yT]].forEach(function (c) {
+      var cp = el("clipPath", { id: c[0] });
+      cp.appendChild(el("rect", { x: m.l, y: c[1], width: pw, height: Math.max(0, c[2]) }));
+      defs.appendChild(cp);
+    });
+    svg.appendChild(defs);
+    var lineAttrs = function (color, clip) {
+      return { d: lineD, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "clip-path": "url(#" + clip + ")" };
+    };
+    svg.appendChild(el("path", { d: bandD, fill: "var(--series)", "fill-opacity": 0.14, stroke: "none", "clip-path": "url(#clip-cool)" }));
+    svg.appendChild(el("path", lineAttrs("var(--series)", "clip-cool")));
+    if (hot) {
+      svg.appendChild(el("path", { d: bandD, fill: "var(--critical)", "fill-opacity": 0.45, stroke: "none", "clip-path": "url(#clip-hot)" }));
+      svg.appendChild(el("path", lineAttrs("var(--critical)", "clip-hot")));
+      if (thr > y0) svg.appendChild(el("line", { x1: m.l, x2: m.l + pw, y1: Y(thr), y2: Y(thr), stroke: "var(--critical)", "stroke-width": 1, "stroke-dasharray": "4 3", opacity: 0.8 }));
+    }
+    // Dreieck ueber jedem Ausschlag, damit auch kurze Spitzen sofort auffallen
+    ev.forEach(function (e) {
+      if (e.t < win.from || e.t > win.to) return;
+      var x = X(e.t);
+      svg.appendChild(el("path", { d: "M" + (x - 4.5) + " " + (m.t - 12) + "H" + (x + 4.5) + "L" + x + " " + (m.t - 4) + "Z", fill: "var(--critical)" }));
+    });
+
+    // Endpunkt mit aktuellem Wert (einzige direkte Beschriftung), nur wenn die Daten bis jetzt reichen
+    var last = s[k1], near = Math.max(bk * 4, 30);
+    if (serverNow() - last[0] < near) {
+      svg.appendChild(el("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }));
+      var lt = el("text", { x: X(last[0]) + 9, y: Y(last[1]) + 4, "class": "end" }); lt.textContent = fmt(last[1]); svg.appendChild(lt);
+    }
+
+    // Hover-Ebene
+    var g = el("g", { id: "hov", visibility: "hidden" });
+    g.appendChild(el("line", { id: "hov-line", y1: m.t, y2: m.t + ph, stroke: "var(--ink-2)", "stroke-width": 1 }));
+    g.appendChild(el("circle", { id: "hov-dot", r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }));
+    svg.appendChild(g);
+    if (state.hover >= k0 && state.hover <= k1) showHover(state.hover);
+    else if (state.hover >= 0) hideHover();
+  }
+
+  function showHover(i) {
+    var s = state.hist.series, p = s[i], gm = state.geom; if (!gm || !gm.Y) return;
+    state.hover = i;
+    var x = gm.X(p[0]);
+    var g = $("hov"); g.setAttribute("visibility", "visible");
+    var ln = $("hov-line"); ln.setAttribute("x1", x); ln.setAttribute("x2", x);
+    var dot = $("hov-dot"); dot.setAttribute("cx", x); dot.setAttribute("cy", gm.Y(p[1]));
+    var tip = $("tip"); tip.hidden = false; tip.innerHTML = "";
+    var when = document.createElement("div"); when.className = "when";
+    when.textContent = dm(p[0]) + " " + (state.hist.bucket >= 60 ? hm(p[0]) : hms(p[0]));
+    tip.appendChild(when);
+    function row(keyCls, val, label, hot) {
+      var r = document.createElement("div"); r.className = "row";
+      var k = document.createElement("span"); k.className = "key" + (keyCls ? " " + keyCls : "");
+      var v = document.createElement("span"); v.className = "v" + (hot ? " hot" : ""); v.textContent = val;
+      var l = document.createElement("span"); l.className = "l"; l.textContent = label;
+      r.appendChild(k); r.appendChild(v); r.appendChild(l); tip.appendChild(r);
+    }
+    row("", fmt(p[1]) + " dB", "Leq", false);
+    row("band", fmt(p[2]) + " – " + fmt(p[3]) + " dB", "Min–Max", state.thr !== null && p[3] >= state.thr);
+    var plot = $("plot"), tw = tip.offsetWidth, left = x + 14;
+    if (left + tw > plot.clientWidth - 4) left = x - tw - 14;
+    tip.style.left = Math.max(4, left) + "px";
+    tip.style.top = Math.max(0, gm.Y(p[1]) - tip.offsetHeight - 10) + "px";
+  }
+  function hideHover() {
+    state.hover = -1;
+    var g = $("hov"); if (g) g.setAttribute("visibility", "hidden");
+    $("tip").hidden = true;
+  }
+
+  /* Bildschirm -> Diagramm -> Zeit, immer bezogen auf das zuletzt gezeichnete Fenster */
+  function svgX(clientX) { var gm = state.geom, r = chart.getBoundingClientRect(); return (clientX - r.left) * (gm.W / (r.width || gm.W)); }
+  function tAt(x) { var gm = state.geom; return gm.win.from + (x - gm.m.l) / gm.pw * (gm.win.to - gm.win.from); }
+  function clampX(x) { var gm = state.geom; return Math.max(gm.m.l, Math.min(gm.m.l + gm.pw, x)); }
+  function nearest(clientX) {
+    var gm = state.geom, s = state.hist && state.hist.series;
+    if (!gm || !s || gm.k1 < gm.k0) return -1;
+    var t = tAt(svgX(clientX)), i = lowerBound(s, t);
+    if (i > 0 && (i >= s.length || t - s[i - 1][0] < s[i][0] - t)) i--;
+    return Math.max(gm.k0, Math.min(gm.k1, i));
+  }
+
+  /* ---------- Zoom: Maus aufziehen, zwei Finger, Strg+Mausrad/Touchpad, Tastatur ---------- */
+  var chart = $("chart");
+  var drag = null, touches = {}, pinch = null, pinchLock = false, wheelTimer = 0, raf = 0;
+  function scheduleDraw() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; drawChart(); }); }
+
+  function showBrush() {
+    var gm = state.geom, a = Math.min(drag.x0, drag.x1), b = Math.max(drag.x0, drag.x1);
+    var k = (chart.getBoundingClientRect().width / gm.W) || 1;
+    var br = $("brush"); br.hidden = false;
+    br.style.left = a * k + "px"; br.style.width = (b - a) * k + "px";
+    br.style.top = gm.m.t * k + "px"; br.style.height = gm.ph * k + "px";
+    var ta = tAt(a), tb = tAt(b), sel = { from: ta, to: tb };
+    var g = $("hov"); if (g) g.setAttribute("visibility", "hidden");
+    state.hover = -1;
+    var tip = $("tip"); tip.hidden = false; tip.innerHTML = "";
+    var l1 = document.createElement("div"); l1.className = "v"; l1.textContent = clock(ta, sel) + " – " + clock(tb, sel);
+    var l2 = document.createElement("div"); l2.className = "when"; l2.textContent = dur(tb - ta) + " · loslassen zum Vergrößern";
+    tip.appendChild(l1); tip.appendChild(l2);
+    var left = b * k + 12, tw = tip.offsetWidth;
+    if (left + tw > $("plot").clientWidth - 4) left = a * k - tw - 12;
+    tip.style.left = Math.max(4, left) + "px"; tip.style.top = "0px";
+  }
+  function hideBrush() { $("brush").hidden = true; $("tip").hidden = true; }
+
+  function startPinch() {
+    var ids = Object.keys(touches).slice(0, 2);
+    pinch = { ids: ids };
+    var xa = svgX(touches[ids[0]]), xb = svgX(touches[ids[1]]);
+    if (Math.abs(xb - xa) >= 24) { pinch.ta = tAt(xa); pinch.tb = tAt(xb); }
+  }
+  function movePinch() {
+    var gm = state.geom, xa = svgX(touches[pinch.ids[0]]), xb = svgX(touches[pinch.ids[1]]);
+    if (pinch.ta === undefined) {             // Finger lagen uebereinander: warten, bis sie auseinander sind
+      if (Math.abs(xb - xa) >= 24) { pinch.ta = tAt(xa); pinch.tb = tAt(xb); }
+      return;
+    }
+    if ((xb - xa) * (pinch.tb - pinch.ta) <= 0 || Math.abs(xb - xa) < 24) return;
+    // Fenster so waehlen, dass die Zeitpunkte unter den Fingern unter den Fingern bleiben
+    var span = (pinch.tb - pinch.ta) * gm.pw / (xb - xa);
+    var from = pinch.ta - (xa - gm.m.l) / gm.pw * span;
+    state.gesture = clampWin(from, from + span);
+    scheduleDraw();
+  }
+
+  chart.addEventListener("pointerdown", function (e) {
+    if (!state.geom) return;
+    if (e.pointerType === "mouse") {
+      if (e.button !== 0) return;
+      drag = { x0: clampX(svgX(e.clientX)), x1: null };
+      try { chart.setPointerCapture(e.pointerId); } catch (err) {}
+    } else {
+      touches[e.pointerId] = e.clientX;
+      if (Object.keys(touches).length === 2) { hideHover(); startPinch(); return; }
+      if (pinch || pinchLock) return;
+    }
+    var i = nearest(e.clientX); if (i >= 0) showHover(i);
+  });
+  chart.addEventListener("pointermove", function (e) {
+    if (!state.geom) return;
+    if (e.pointerType === "mouse") {
+      if (drag) {
+        var x = clampX(svgX(e.clientX));
+        if (drag.x1 !== null || Math.abs(x - drag.x0) > 4) { drag.x1 = x; showBrush(); return; }
+      }
+    } else {
+      if (!(e.pointerId in touches)) return;
+      touches[e.pointerId] = e.clientX;
+      if (pinch) { movePinch(); return; }
+      if (pinchLock) return;
+    }
+    var i = nearest(e.clientX); if (i >= 0) showHover(i);
+  });
+  function endPointer(e, cancelled) {
+    if (e.pointerType === "mouse") {
+      if (!drag) return;
+      var d = drag; drag = null; hideBrush();
+      if (!cancelled && d.x1 !== null && Math.abs(d.x1 - d.x0) >= 6) setZoom(clampWin(tAt(Math.min(d.x0, d.x1)), tAt(Math.max(d.x0, d.x1))));
+      return;
+    }
+    delete touches[e.pointerId];
+    var n = Object.keys(touches).length;
+    if (pinch && (n < 2 || pinch.ids.indexOf(String(e.pointerId)) >= 0)) {
+      var g = state.gesture;
+      pinch = null; pinchLock = n > 0;            // verbleibenden Finger ignorieren, bis er losgelassen ist
+      if (g && !cancelled) setZoom(g); else { state.gesture = null; drawChart(); }
+    }
+    if (n === 0) pinchLock = false;
+  }
+  chart.addEventListener("pointerup", function (e) { endPointer(e, false); });
+  chart.addEventListener("pointercancel", function (e) { endPointer(e, true); });
+  chart.addEventListener("pointerleave", function () { if (!drag && !pinch) hideHover(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && drag) { drag = null; hideBrush(); } });
+  chart.addEventListener("dblclick", function (e) { e.preventDefault(); resetZoom(); });
+  chart.addEventListener("gesturestart", function (e) { e.preventDefault(); });   // Safari: Seite nicht mitzoomen
+  // Strg+Mausrad und Touchpad-Spreizen (kommt als Strg+Rad an); normales Scrollen bleibt Seiten-Scrollen
+  chart.addEventListener("wheel", function (e) {
+    if (!e.ctrlKey || !state.geom) return;
+    e.preventDefault();
+    var dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1);
+    var f = Math.exp(Math.max(-100, Math.min(100, dy)) * 0.01);
+    var w = curWin(), t = tAt(svgX(e.clientX));
+    state.gesture = clampWin(t - (t - w.from) * f, t + (w.to - t) * f);
+    hideHover(); scheduleDraw();
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(function () { if (state.gesture) setZoom(state.gesture); }, 300);
+  }, { passive: false });
+  chart.addEventListener("keydown", function (e) {
+    var gm = state.geom, s = state.hist && state.hist.series;
+    var at = state.hover >= 0 && s ? s[state.hover][0] : undefined;
+    if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomBy(0.5, at); return; }
+    if (e.key === "-") { e.preventDefault(); zoomBy(2, at); return; }
+    if (e.key === "0") { e.preventDefault(); resetZoom(); return; }
+    if (!gm || !s || gm.k1 < gm.k0) return;
+    var i = state.hover < 0 ? gm.k1 : state.hover;
+    if (e.key === "ArrowLeft") i = Math.max(gm.k0, i - 1);
+    else if (e.key === "ArrowRight") i = Math.min(gm.k1, i + 1);
+    else if (e.key === "Escape") { hideHover(); return; }
+    else return;
+    e.preventDefault(); showHover(i);
+  });
+  chart.addEventListener("blur", hideHover);
+
+  /* ---------- Tabelle ---------- */
+  function drawTable() {
+    var tb = $("rows"); tb.innerHTML = "";
+    var s = state.hist && state.hist.series ? state.hist.series : [];
+    var wide = state.hist && state.hist.bucket >= 60, thr = state.thr, win = curWin();
+    showPeaks(findPeaks(win), win);
+    for (var i = s.length - 1, n = 0; i >= 0 && n < 1000; i--, n++) {
+      var tr = document.createElement("tr");
+      [dm(s[i][0]) + " " + (wide ? hm(s[i][0]) : hms(s[i][0])), fmt(s[i][1]), fmt(s[i][2]), fmt(s[i][3])].forEach(function (txt, c) {
+        var td = document.createElement("td"); td.textContent = txt;
+        if (c === 3 && thr !== null && s[i][3] >= thr) td.className = "hot";
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    }
+    if (!s.length) { var r = document.createElement("tr"), c = document.createElement("td"); c.colSpan = 4; c.textContent = "Noch keine Daten für diesen Zeitraum"; r.appendChild(c); tb.appendChild(r); }
+  }
+
+  function render() {
+    var h = state.hist, b = h ? h.bucket : 0, z = state.zoom, sub = [];
+    if (z) {
+      var w = curWin();
+      sub.push(z.live ? "Ausschnitt: letzte " + dur(z.span) : "Ausschnitt " + clock(w.from, w) + " – " + clock(w.to, w) + " (" + dur(w.to - w.from) + ")");
+    }
+    if (h) sub.push("ein Punkt = " + (b >= 60 ? Math.round(b / 60) + " Min" : Math.round(b) + " s"), h.rows + " Messzeilen");
+    $("chart-sub").textContent = sub.join(" · ");
+    $("zoomreset").hidden = !z;
+    if (state.view === "chart") drawChart(); else drawTable();
+  }
+
+  /* ---------- Logger neu starten ---------- */
+  $("restart").addEventListener("click", function () {
+    var b = this;
+    if (!window.confirm("Logger neu starten? Die Aufzeichnung setzt nach wenigen Sekunden fort.")) return;
+    b.disabled = true;
+    fetch("/api/restart-logger", { method: "POST", headers: { "X-Requested-With": "pce323" } })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok) setStatus("warning", "Logger wird neu gestartet …");
+        else setStatus("critical", res.j.message || res.j.error || "Neustart fehlgeschlagen");
+      })
+      .catch(function () { setStatus("critical", "Webserver nicht erreichbar"); })
+      .then(function () { setTimeout(function () { b.disabled = false; }, 15000); });
+  });
+
+  /* ---------- Bedienung ---------- */
+  function persist() { try { localStorage.setItem("pce323", JSON.stringify({ minutes: state.minutes, view: state.view, thr: state.thr })); } catch (e) {} }
+  function syncButtons() {
+    Array.prototype.forEach.call($("ranges").children, function (b) { b.setAttribute("aria-pressed", String(!state.day && +b.dataset.min === state.minutes)); });
+    var t = todayIso(), base = state.day || t, inp = $("day");
+    $("daynav").classList.toggle("on", !!state.day);
+    if (inp.value !== (state.day || "")) inp.value = state.day || "";
+    inp.max = t; if (dayMin) inp.min = dayMin;
+    Array.prototype.forEach.call($("daynav").querySelectorAll("button"), function (b) {
+      var n = +b.dataset.step;
+      b.disabled = n > 0 ? (!state.day || state.day >= t) : (!!dayMin && base <= dayMin);
+    });
+    $("chart-title").textContent = !state.day ? "Pegelverlauf"
+      : (state.day === t ? "Pegelverlauf heute, " : "Pegelverlauf am ") + longDate(state.day);
+    Array.prototype.forEach.call($("views").children, function (b) { b.setAttribute("aria-pressed", String(b.dataset.view === state.view)); });
+    $("chartview").hidden = state.view !== "chart"; $("tableview").hidden = state.view !== "table";
+  }
+  $("ranges").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.minutes = +b.dataset.min; state.day = null; state.zoom = null; state.gesture = null; hideHover(); persist(); syncButtons(); loadHistory();
+  });
+  $("views").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.view = b.dataset.view; persist(); syncButtons(); render();
+  });
+  if (window.ResizeObserver) new ResizeObserver(function () { if (state.view === "chart") drawChart(); }).observe($("plot"));
+  else window.addEventListener("resize", function () { if (state.view === "chart") drawChart(); });
+
+  $("zoomreset").addEventListener("click", resetZoom);
+
+  /* ---------- Vergangene Tage ---------- */
+  function setDay(s) {
+    var t = todayIso();
+    if (s && s > t) s = t;
+    if (s && dayMin && s < dayMin) s = dayMin;
+    state.day = s || null; state.zoom = null; state.gesture = null; hideHover();
+    state.followToday = state.day === t;           // "heute" springt um Mitternacht auf den neuen Tag
+    syncButtons(); loadHistory();
+  }
+  $("daynav").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b || b.disabled) return;
+    setDay(addDays(state.day || todayIso(), +b.dataset.step));   // von live aus: ab heute zurueck
+  });
+  $("day").addEventListener("change", function () {
+    var v = this.value;
+    if (!v) { if (state.day) setDay(null); return; }                 // Feld geleert: zurueck zu live
+    if (v > todayIso() || (dayMin && v < dayMin)) return;            // halb getippt oder ausserhalb: abwarten
+    if (v !== state.day) setDay(v);
+  });
+  var thrIn = $("thr");
+  thrIn.value = state.thr === null ? "" : String(state.thr);
+  thrIn.addEventListener("input", function () {
+    var v = parseFloat(String(thrIn.value).replace(",", "."));
+    state.thr = isFinite(v) ? v : null; persist(); render();
+  });
+  var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  $("zoomhint").textContent = coarse ? "Zoomen: mit zwei Fingern spreizen" : "Zoomen: Bereich mit der Maus aufziehen, Doppelklick: zurück";
+
+  // Standard beim Oeffnen: der heutige Tag
+  state.day = todayIso(); state.followToday = true;
+  syncButtons();
+  startPolling();
+})();
+</script>
+</body>
+</html>

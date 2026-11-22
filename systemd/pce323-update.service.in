@@ -1,0 +1,10 @@
+[Unit]
+Description=PCE-323 Update aus GitHub holen und Dienste neu starten
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Laeuft als root, weil die Dienste neu gestartet werden; git selbst laeuft als @USER@ (siehe update.sh)
+ExecStart=@DIR@/update.sh
+TimeoutStartSec=600

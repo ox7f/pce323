@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# Messdaten bleiben auf dem Pi (ca. 5 MB pro Tag), nicht im Repository
+data/

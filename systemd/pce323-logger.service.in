@@ -1,0 +1,21 @@
+[Unit]
+Description=PCE-323 Schallpegel-Logger
+After=local-fs.target time-sync.target
+
+[Service]
+Type=simple
+User=@USER@
+SupplementaryGroups=dialout
+WorkingDirectory=@DIR@
+RuntimeDirectory=pce323
+RuntimeDirectoryPreserve=yes
+# Nach dem Booten bis zu 5 Minuten auf die Internet-Uhrzeit warten (Pi 2 hat keine Batterieuhr)
+ExecStartPre=-/bin/sh @DIR@/systemd/wait-time-sync.sh 300 /run/pce323/latest.json
+TimeoutStartSec=360
+ExecStart=/usr/bin/python3 @DIR@/pce323.py --port @SERIAL@ --csv @DIR@/data/pegel_%%Y-%%m-%%d.csv --status /run/pce323/latest.json --interval 1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

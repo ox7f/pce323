@@ -1,0 +1,16 @@
+[Unit]
+Description=PCE-323 Webansicht
+After=network.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@DIR@
+ExecStart=/usr/bin/python3 @DIR@/pce323_web.py --csv @DIR@/data/pegel_%%Y-%%m-%%d.csv --status /run/pce323/latest.json --port @WEBPORT@
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
